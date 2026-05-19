@@ -72,6 +72,18 @@ validate_extra_ports() {
     IFS="$old_ifs"
 }
 
+validate_wireguard_private_key_hint() {
+    key="$1"
+    [ -n "$key" ] || return 0
+    key_len=${#key}
+    if [ "$VPN_SERVICE_PROVIDER" = "nordvpn" ] && [ "$VPN_TYPE" = "wireguard" ] && [ "$key_len" -eq 64 ]; then
+        fatal "wireguard_private_key looks like a NordVPN access token (${key_len} chars), not a WireGuard private key. Convert it locally with: curl -sS -u 'token:<token>' https://api.nordvpn.com/v1/users/services/credentials | jq -r '.nordlynx_private_key'"
+    fi
+    if [ "$key_len" -ne 44 ]; then
+        fatal "wireguard_private_key must be the provider WireGuard private key, usually 44 base64 characters ending with '='. Got ${key_len} characters. A NordVPN login/access token is not valid here."
+    fi
+}
+
 is_managed_env() {
     case "$1" in
         VPN_SERVICE_PROVIDER|VPN_TYPE|OPENVPN_USER|OPENVPN_PASSWORD|OPENVPN_USER_SECRETFILE|OPENVPN_PASSWORD_SECRETFILE|OPENVPN_PROTOCOL|WIREGUARD_PRIVATE_KEY|WIREGUARD_PRIVATE_KEY_SECRETFILE|SERVER_COUNTRIES|SERVER_REGIONS|SERVER_CITIES|SERVER_HOSTNAMES|SERVER_CATEGORIES|SERVER_NUMBER|HTTPPROXY|HTTPPROXY_LISTENING_ADDRESS|HTTPPROXY_USER|HTTPPROXY_PASSWORD|HTTPPROXY_USER_SECRETFILE|HTTPPROXY_PASSWORD_SECRETFILE|HTTPPROXY_STEALTH|SHADOWSOCKS|SHADOWSOCKS_LISTENING_ADDRESS|SHADOWSOCKS_PASSWORD|SHADOWSOCKS_PASSWORD_SECRETFILE|SHADOWSOCKS_CIPHER|FIREWALL_INPUT_PORTS|FIREWALL_OUTBOUND_SUBNETS|FIREWALL_ENABLED_DISABLING_IT_SHOOTS_YOU_IN_YOUR_FOOT|HEALTH_SERVER_ADDRESS|HTTP_CONTROL_SERVER_ADDRESS|STORAGE_FILEPATH|PUBLICIP_FILE|LOG_LEVEL)
@@ -162,6 +174,7 @@ if [ "$VPN_SERVICE_PROVIDER" = "nordvpn" ]; then
         [ -n "$OPENVPN_PASSWORD_VALUE" ] || fatal "openvpn_password is required for NordVPN OpenVPN. Use NordVPN service credentials, not your account password."
     else
         [ -n "$WIREGUARD_PRIVATE_KEY_VALUE" ] || fatal "wireguard_private_key is required for NordVPN WireGuard."
+        validate_wireguard_private_key_hint "$WIREGUARD_PRIVATE_KEY_VALUE"
     fi
 fi
 

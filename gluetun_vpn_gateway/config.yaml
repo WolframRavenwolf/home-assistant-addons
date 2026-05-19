@@ -1,5 +1,5 @@
 name: Gluetun VPN Gateway
-version: "0.1.0"
+version: "0.1.1"
 slug: gluetun_vpn_gateway
 description: "Configurable Gluetun VPN gateway/proxy for selective routing from LAN clients."
 url: "https://github.com/WolframRavenwolf/home-assistant-addons"

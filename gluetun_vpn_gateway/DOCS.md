@@ -34,13 +34,26 @@ The bundled defaults provide a ready-to-use example profile — NordVPN WireGuar
 
 The default options are set so the add-on targets NordVPN WireGuard in the United States, filtered to San Francisco. For this default profile, the only VPN credential you need to enter is your NordVPN WireGuard private key.
 
+Important: a NordVPN login/access token is **not** the WireGuard private key. Login tokens are often 64 characters; WireGuard private keys are normally 44 base64 characters and often end with `=`. If you generated a NordVPN token, convert it locally and paste the resulting `nordlynx_private_key` into `wireguard_private_key`:
+
+```bash
+read -rs NORDVPN_TOKEN
+printf '\n'
+curl -sS -u "token:${NORDVPN_TOKEN}" \
+  https://api.nordvpn.com/v1/users/services/credentials \
+  | jq -r '.nordlynx_private_key'
+unset NORDVPN_TOKEN
+```
+
+Do not paste your token or private key into chats, logs, issues, or repository files.
+
 | Option | Example value |
 | --- | --- |
 | `vpn_service_provider` | `nordvpn` |
 | `vpn_type` | `wireguard` |
 | `server_countries` | `United States` |
 | `server_cities` | `San Francisco` |
-| `wireguard_private_key` | NordVPN WireGuard private key |
+| `wireguard_private_key` | NordVPN `nordlynx_private_key`, not the login/access token |
 | `http_proxy` | `true` |
 | `firewall_outbound_subnets` | Your trusted LAN CIDR, for example `192.168.178.0/24` |
 
