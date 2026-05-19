@@ -12,7 +12,7 @@ https://github.com/WolframRavenwolf/home-assistant-addons
 
 | Add-on | Slug | Status | Purpose |
 | --- | --- | --- | --- |
-| Gluetun VPN Gateway | `gluetun_vpn_gateway` | Initial release | Configurable LAN-only VPN gateway/proxy using Gluetun, defaulting to NordVPN WireGuard with United States / San Francisco server filters, plus HTTP CONNECT and optional Shadowsocks endpoints for selective client/app routing. |
+| Gluetun VPN Gateway | `gluetun_vpn_gateway` | Active | Configurable LAN-only VPN gateway/proxy using Gluetun, defaulting to NordVPN WireGuard with United States / San Francisco server filters, token-to-key caching, HTTP CONNECT, and optional Shadowsocks endpoints for selective client/app routing. |
 
 ## Repository layout
 

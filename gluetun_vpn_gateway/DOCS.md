@@ -10,13 +10,13 @@ The bundled defaults provide a ready-to-use example profile — NordVPN WireGuar
 
 - Gluetun `v3.41.1` base image, pinned for reproducible builds.
 - Generic Gluetun provider configuration; defaults to NordVPN WireGuard + `server_countries: United States` + `server_cities: San Francisco` as an example profile.
-- WireGuard mode by default, using either a provider private key or, for NordVPN, an access token that is exchanged for `nordlynx_private_key` at startup.
+- WireGuard mode by default, using either a provider private key or, for NordVPN, an access token that is exchanged for `nordlynx_private_key` at startup and cached by default for future starts.
 - OpenVPN mode remains available for providers or setups requiring service credentials.
 - HTTP CONNECT proxy on port `8888` for Codex, browsers, CLIs, and apps with proxy support.
 - Optional Shadowsocks TCP/UDP proxy on port `8388`.
 - Gluetun firewall/kill-switch remains active; proxy traffic should not fall back to the normal WAN when VPN fails.
 - HA ingress landing page with copy-paste proxy examples.
-- Persistent Gluetun server cache/public IP files under `/config/gluetun`.
+- Persistent Gluetun server cache/public IP files under `/config/gluetun` and optional fetched NordVPN WireGuard key cache under add-on data.
 
 ## Installation
 
@@ -26,7 +26,7 @@ The bundled defaults provide a ready-to-use example profile — NordVPN WireGuar
    https://github.com/WolframRavenwolf/home-assistant-addons
    ```
 3. Install **Gluetun VPN Gateway**.
-4. For the default NordVPN San Francisco profile, enter either `nordvpn_access_token` or `wireguard_private_key` before starting. For other providers/tunnel types, adjust the provider/server options and credentials first.
+4. For the default NordVPN San Francisco profile, enter either `nordvpn_access_token` or `wireguard_private_key` before starting. With the default `cache_fetched_wireguard_key: true`, a successful token-based start caches the fetched key so the token can be removed afterwards. For other providers/tunnel types, adjust the provider/server options and credentials first.
 5. Start the add-on.
 6. Configure only the apps that should use this VPN gateway to use `http://homeassistant.local:8888` or your Home Assistant LAN IP.
 
@@ -34,8 +34,11 @@ The bundled defaults provide a ready-to-use example profile — NordVPN WireGuar
 
 The default options are set so the add-on targets NordVPN WireGuard in the United States, filtered to San Francisco. For this default profile, enter **one** of these credentials:
 
-- `nordvpn_access_token`: easiest path. The add-on exchanges the token for `nordlynx_private_key` at startup and stores only the fetched WireGuard key in `/run/secrets` for Gluetun.
-- `wireguard_private_key`: advanced/static path. Paste the already-converted NordVPN `nordlynx_private_key` directly. If both fields are set, `wireguard_private_key` takes priority and no NordVPN API call is made.
+- `nordvpn_access_token`: easiest first-start path. The add-on exchanges the token for `nordlynx_private_key` at startup and stores the fetched WireGuard key in `/run/secrets` for Gluetun. With the default `cache_fetched_wireguard_key: true`, it also caches the fetched key under add-on data so you can remove the token after the first successful start.
+- `wireguard_private_key`: advanced/static path. Paste the already-converted NordVPN `nordlynx_private_key` directly. If this field is set, it takes priority over both `nordvpn_access_token` and the cached key, and no NordVPN API call is made.
+- Cached key: if `wireguard_private_key` and `nordvpn_access_token` are both empty, `cache_fetched_wireguard_key: true` lets the add-on reuse a previously cached fetched key.
+
+NordVPN access tokens can be generated as temporary tokens that expire after 30 days or as non-expiring tokens. If you use a temporary token, the cached key lets the add-on continue starting after the token is removed or expires, as long as NordVPN has not rotated/revoked the underlying service credentials. If the cached key ever stops working, generate a fresh token, put it back into `nordvpn_access_token`, start the add-on once to refresh the cache, then remove the token again.
 
 Important: a NordVPN login/access token is **not** the WireGuard private key. Login tokens are often 64 characters; WireGuard private keys are normally 44 base64 characters and often end with `=`. You can either paste the token into `nordvpn_access_token`, or convert it locally and paste the resulting `nordlynx_private_key` into `wireguard_private_key`:
 
@@ -65,6 +68,7 @@ Do not paste your token or private key into chats, logs, issues, or repository f
 | `server_cities` | `San Francisco` |
 | `wireguard_private_key` | Optional direct NordVPN `nordlynx_private_key`; takes priority over `nordvpn_access_token` |
 | `nordvpn_access_token` | Optional NordVPN login/access token; used only when `wireguard_private_key` is empty |
+| `cache_fetched_wireguard_key` | `true`; cache token-fetched NordVPN WireGuard key so the token can be removed after a successful start |
 | `http_proxy` | `true` |
 | `firewall_outbound_subnets` | Your trusted LAN CIDR, for example `192.168.178.0/24` |
 
@@ -121,7 +125,8 @@ Also check DNS/IP leaks with a browser profile pointed at the proxy:
 - `firewall_outbound_subnets` must match your actual trusted LAN CIDR if the add-on needs to talk back to LAN clients; the default `192.168.178.0/24` is only an example profile.
 - Optional Shadowsocks ports are disabled by default in Home Assistant (`null` host mappings). To expose Shadowsocks, assign `8388/tcp` and `8388/udp` in the add-on network settings and set `shadowsocks: true` plus a strong password.
 - Do not change Home Assistant's own default gateway; this add-on should isolate VPN routing inside the container.
-- `nordvpn_access_token` is stored as a Home Assistant password option and is never logged by the add-on. It is used only to fetch `nordlynx_private_key` from NordVPN over HTTPS during startup.
+- `nordvpn_access_token` is stored as a Home Assistant password option and is never logged by the add-on. It is used only to fetch `nordlynx_private_key` from NordVPN over HTTPS during startup. For least-privilege steady state, leave `cache_fetched_wireguard_key: true`, start once with the token, then remove the token from the add-on options.
+- The cached NordVPN WireGuard key is still a secret. It is narrower than the access token, but it can still authenticate VPN sessions. Treat Home Assistant backups/snapshots containing add-on data as sensitive.
 - If `http_proxy_user` is set, `http_proxy_password` must also be set.
 - If Shadowsocks is enabled, set a strong `shadowsocks_password`.
 
@@ -133,6 +138,8 @@ Also check DNS/IP leaks with a browser profile pointed at the proxy:
 - Gluetun HTTP proxy options: <https://github.com/qdm12/gluetun-wiki/blob/main/setup/options/http-proxy.md>
 - Gluetun Shadowsocks options: <https://github.com/qdm12/gluetun-wiki/blob/main/setup/options/shadowsocks.md>
 - Gluetun firewall options: <https://github.com/qdm12/gluetun-wiki/blob/main/setup/options/firewall.md>
+- NordVPN login token generation: <https://support.nordvpn.com/hc/en-us/articles/45535038276753-How-to-generate-a-NordVPN-login-token-to-connect-to-a-VPN-server-on-a-router>
+- NordVPN service credential changes for third-party apps/routers: <https://support.nordvpn.com/hc/en-us/articles/19685514639633-Changes-to-the-login-process-on-third-party-apps-and-routers>
 
 ## License
 

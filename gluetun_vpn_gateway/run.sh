@@ -6,6 +6,8 @@ INGRESS_PORT=8099
 HTTP_PROXY_PORT=8888
 SHADOWSOCKS_PORT=8388
 CONFIG_DIR="/config/gluetun"
+NORDVPN_CACHE_DIR="/data/nordvpn"
+NORDVPN_WIREGUARD_KEY_CACHE="${NORDVPN_CACHE_DIR}/wireguard_private_key"
 LANDING_TEMPLATE="/var/www/landing.html.tpl"
 LANDING_PAGE="/var/www/landing.html"
 
@@ -39,8 +41,11 @@ write_secret() {
     path="$1"
     value="$2"
     [ -n "$value" ] || return 0
-    mkdir -p /run/secrets
     umask 077
+    dir="${path%/*}"
+    if [ "$dir" != "$path" ]; then
+        mkdir -p "$dir"
+    fi
     printf '%s' "$value" > "$path"
     chmod 600 "$path"
 }
@@ -114,6 +119,25 @@ fetch_nordvpn_wireguard_private_key() {
     printf '%s' "$private_key"
 }
 
+read_cached_nordvpn_wireguard_private_key() {
+    path="$1"
+    [ -f "$path" ] || return 1
+    private_key=""
+    IFS= read -r private_key < "$path" || [ -n "$private_key" ] || return 1
+    [ -n "$private_key" ] || return 1
+    printf '%s' "$private_key"
+}
+
+cache_nordvpn_wireguard_private_key() {
+    path="$1"
+    private_key="$2"
+    [ -n "$private_key" ] || fatal "cannot cache empty NordVPN WireGuard private key"
+    if ! write_secret "$path" "$private_key"; then
+        fatal "failed to cache fetched NordVPN WireGuard private key"
+    fi
+    echo "[gluetun-vpn-gateway] Cached fetched NordVPN WireGuard private key for future starts" >&2
+}
+
 is_managed_env() {
     case "$1" in
         VPN_SERVICE_PROVIDER|VPN_TYPE|OPENVPN_USER|OPENVPN_PASSWORD|OPENVPN_USER_SECRETFILE|OPENVPN_PASSWORD_SECRETFILE|OPENVPN_PROTOCOL|WIREGUARD_PRIVATE_KEY|WIREGUARD_PRIVATE_KEY_SECRETFILE|NORDVPN_ACCESS_TOKEN|NORDVPN_ACCESS_TOKEN_SECRETFILE|SERVER_COUNTRIES|SERVER_REGIONS|SERVER_CITIES|SERVER_HOSTNAMES|SERVER_CATEGORIES|SERVER_NUMBER|HTTPPROXY|HTTPPROXY_LISTENING_ADDRESS|HTTPPROXY_USER|HTTPPROXY_PASSWORD|HTTPPROXY_USER_SECRETFILE|HTTPPROXY_PASSWORD_SECRETFILE|HTTPPROXY_STEALTH|SHADOWSOCKS|SHADOWSOCKS_LISTENING_ADDRESS|SHADOWSOCKS_PASSWORD|SHADOWSOCKS_PASSWORD_SECRETFILE|SHADOWSOCKS_CIPHER|FIREWALL_INPUT_PORTS|FIREWALL_OUTBOUND_SUBNETS|FIREWALL_ENABLED_DISABLING_IT_SHOOTS_YOU_IN_YOUR_FOOT|HEALTH_SERVER_ADDRESS|HTTP_CONTROL_SERVER_ADDRESS|STORAGE_FILEPATH|PUBLICIP_FILE|LOG_LEVEL)
@@ -183,6 +207,7 @@ OPENVPN_PASSWORD_VALUE="$(opt openvpn_password)"
 OPENVPN_PROTOCOL_VALUE="$(opt openvpn_protocol)"
 WIREGUARD_PRIVATE_KEY_VALUE="$(opt wireguard_private_key)"
 NORDVPN_ACCESS_TOKEN_VALUE="$(opt nordvpn_access_token)"
+CACHE_FETCHED_WIREGUARD_KEY_VALUE="$(jq -r 'if .cache_fetched_wireguard_key == null then true else .cache_fetched_wireguard_key end' "$OPTIONS_FILE")"
 HTTP_PROXY_USER_VALUE="$(opt http_proxy_user)"
 HTTP_PROXY_PASSWORD_VALUE="$(opt http_proxy_password)"
 SHADOWSOCKS_PASSWORD_VALUE="$(opt shadowsocks_password)"
@@ -198,6 +223,10 @@ case "$VPN_TYPE" in
     openvpn|wireguard) ;;
     *) fatal "vpn_type must be openvpn or wireguard" ;;
 esac
+case "$CACHE_FETCHED_WIREGUARD_KEY_VALUE" in
+    true|false) ;;
+    *) fatal "cache_fetched_wireguard_key must be true or false" ;;
+esac
 
 if [ "$VPN_SERVICE_PROVIDER" = "nordvpn" ]; then
     if [ "$VPN_TYPE" = "openvpn" ]; then
@@ -206,8 +235,17 @@ if [ "$VPN_SERVICE_PROVIDER" = "nordvpn" ]; then
         [ -n "$OPENVPN_PASSWORD_VALUE" ] || fatal "openvpn_password is required for NordVPN OpenVPN. Use NordVPN service credentials, not your account password."
     else
         if [ -z "$WIREGUARD_PRIVATE_KEY_VALUE" ]; then
-            [ -n "$NORDVPN_ACCESS_TOKEN_VALUE" ] || fatal "wireguard_private_key or nordvpn_access_token is required for NordVPN WireGuard."
-            WIREGUARD_PRIVATE_KEY_VALUE="$(fetch_nordvpn_wireguard_private_key "$NORDVPN_ACCESS_TOKEN_VALUE")"
+            if [ -n "$NORDVPN_ACCESS_TOKEN_VALUE" ]; then
+                WIREGUARD_PRIVATE_KEY_VALUE="$(fetch_nordvpn_wireguard_private_key "$NORDVPN_ACCESS_TOKEN_VALUE")"
+                validate_wireguard_private_key_hint "$WIREGUARD_PRIVATE_KEY_VALUE"
+                if [ "$CACHE_FETCHED_WIREGUARD_KEY_VALUE" = "true" ]; then
+                    cache_nordvpn_wireguard_private_key "$NORDVPN_WIREGUARD_KEY_CACHE" "$WIREGUARD_PRIVATE_KEY_VALUE"
+                fi
+            elif [ "$CACHE_FETCHED_WIREGUARD_KEY_VALUE" = "true" ] && WIREGUARD_PRIVATE_KEY_VALUE="$(read_cached_nordvpn_wireguard_private_key "$NORDVPN_WIREGUARD_KEY_CACHE")"; then
+                echo "[gluetun-vpn-gateway] Using cached NordVPN WireGuard private key" >&2
+            else
+                fatal "wireguard_private_key, nordvpn_access_token, or a cached key is required for NordVPN WireGuard."
+            fi
         fi
         validate_wireguard_private_key_hint "$WIREGUARD_PRIVATE_KEY_VALUE"
     fi

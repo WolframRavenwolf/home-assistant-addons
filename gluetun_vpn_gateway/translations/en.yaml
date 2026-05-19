@@ -10,7 +10,7 @@ configuration:
   vpn_type:
     name: VPN Type
     description: >-
-      Use wireguard with a provider private key, or openvpn with provider service credentials. The default NordVPN profile uses WireGuard so only wireguard_private_key is required.
+      Use wireguard with a provider private key or NordVPN token/key cache, or openvpn with provider service credentials.
   server_countries:
     name: Server Countries
     description: >-
@@ -44,7 +44,11 @@ configuration:
     description: Optional provider WireGuard private key. For the default NordVPN profile, this is the nordlynx_private_key and takes priority over nordvpn_access_token.
   nordvpn_access_token:
     name: NordVPN Access Token
-    description: Optional NordVPN login/access token. Used only with NordVPN WireGuard when wireguard_private_key is empty; the add-on exchanges it for nordlynx_private_key at startup and never logs the token.
+    description: Optional NordVPN login/access token. Used only with NordVPN WireGuard when wireguard_private_key is empty; the add-on exchanges it for nordlynx_private_key at startup, can cache the fetched key, and never logs the token.
+  cache_fetched_wireguard_key:
+    name: Cache Fetched WireGuard Key
+    description: >-
+      Cache a NordVPN token-fetched WireGuard private key in add-on data. Enabled by default so you can start once with nordvpn_access_token, remove the token, and keep using the cached key.
   http_proxy:
     name: HTTP CONNECT Proxy
     description: Enable Gluetun's built-in HTTP CONNECT proxy on port 8888.

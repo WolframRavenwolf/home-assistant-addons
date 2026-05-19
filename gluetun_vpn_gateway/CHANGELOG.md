@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3
+
+- Add `cache_fetched_wireguard_key`, enabled by default.
+- Cache NordVPN token-fetched `nordlynx_private_key` under add-on data for future starts.
+- Allow the steady-state flow: enter `nordvpn_access_token`, start once, remove the token, keep using the cached key.
+
 ## 0.1.2
 
 - Add optional `nordvpn_access_token` support for NordVPN WireGuard.
