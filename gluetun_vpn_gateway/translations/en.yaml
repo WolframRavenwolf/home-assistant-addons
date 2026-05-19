@@ -1,0 +1,79 @@
+configuration:
+  host_hint:
+    name: Host Hint
+    description: >-
+      Hostname or LAN IP clients should use when configuring the proxy, for example homeassistant.local or 192.168.178.254.
+  vpn_service_provider:
+    name: VPN Service Provider
+    description: >-
+      Gluetun VPN provider identifier. Defaults to nordvpn, but any Gluetun-supported provider can be used.
+  vpn_type:
+    name: VPN Type
+    description: >-
+      Use wireguard with a provider private key, or openvpn with provider service credentials. The default NordVPN profile uses WireGuard so only wireguard_private_key is required.
+  server_countries:
+    name: Server Countries
+    description: >-
+      Comma-separated Gluetun country filter. Defaults to United States for the bundled NordVPN San Francisco profile, but any Gluetun-supported country list can be used.
+  server_regions:
+    name: Server Regions
+    description: Optional comma-separated region/state filter supported by Gluetun.
+  server_cities:
+    name: Server Cities
+    description: Optional comma-separated city filter supported by Gluetun. Defaults to San Francisco for the bundled NordVPN profile.
+  server_hostnames:
+    name: Server Hostnames
+    description: Optional comma-separated exact server hostnames. Use sparingly because pinned hostnames can disappear.
+  server_categories:
+    name: Server Categories
+    description: Optional comma-separated provider-specific server categories.
+  server_number:
+    name: Server Number
+    description: Optional NordVPN server number filter.
+  openvpn_user:
+    name: OpenVPN User
+    description: Provider OpenVPN/manual setup username. For NordVPN, use the service username rather than the normal account email.
+  openvpn_password:
+    name: OpenVPN Password
+    description: Provider OpenVPN/manual setup password. For NordVPN, use the service password rather than the normal account password.
+  openvpn_protocol:
+    name: OpenVPN Protocol
+    description: UDP is usually fastest; TCP can help on restrictive networks.
+  wireguard_private_key:
+    name: WireGuard Private Key
+    description: WireGuard private key for providers that require it. For the default NordVPN WireGuard profile, enter your NordVPN WireGuard private key here.
+  http_proxy:
+    name: HTTP CONNECT Proxy
+    description: Enable Gluetun's built-in HTTP CONNECT proxy on port 8888.
+  http_proxy_user:
+    name: HTTP Proxy Username
+    description: Optional proxy-auth username. Leave empty with the password empty for no proxy authentication.
+  http_proxy_password:
+    name: HTTP Proxy Password
+    description: Optional proxy-auth password. Must be set together with the username.
+  http_proxy_stealth:
+    name: HTTP Proxy Stealth Mode
+    description: Avoid adding proxy headers to requests.
+  shadowsocks:
+    name: Shadowsocks Proxy
+    description: Enable Gluetun's built-in Shadowsocks proxy on port 8388 TCP/UDP.
+  shadowsocks_password:
+    name: Shadowsocks Password
+    description: Required when Shadowsocks is enabled.
+  shadowsocks_cipher:
+    name: Shadowsocks Cipher
+    description: AEAD cipher used by the Shadowsocks proxy.
+  firewall_outbound_subnets:
+    name: Firewall Outbound Subnets
+    description: >-
+      LAN subnets Gluetun may access outside the VPN tunnel, for example 192.168.178.0/24.
+  extra_input_ports:
+    name: Extra Input Ports
+    description: Optional comma-separated additional ports allowed through Gluetun's firewall on the default interface.
+  log_level:
+    name: Log Level
+    description: Gluetun log level.
+  env_vars:
+    name: Extra Gluetun Environment Variables
+    description: >-
+      Advanced extra Gluetun environment variables. Managed variables for VPN/proxy/firewall settings are ignored here.

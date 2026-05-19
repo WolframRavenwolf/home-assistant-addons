@@ -1,0 +1,19 @@
+# Gluetun VPN Gateway
+
+LAN-only Home Assistant add-on that runs [Gluetun](https://github.com/qdm12/gluetun) as a configurable VPN gateway/proxy for selected LAN clients, apps, browser profiles, and CLI tools.
+
+The default profile is ready for a NordVPN San Francisco egress setup:
+
+- Provider: `nordvpn`
+- VPN type: `wireguard`
+- Country filter: `United States`
+- City filter: `San Francisco`
+- HTTP CONNECT proxy: `8888/tcp`
+
+With the default profile, enter only your NordVPN WireGuard private key in `wireguard_private_key`, then start the add-on.
+
+See [`DOCS.md`](DOCS.md) for installation, configuration, proxy-auth options, and verification steps.
+
+## Security
+
+Keep the proxy LAN-only. Do not port-forward it and do not expose it through public tunnels. On untrusted LANs, set `http_proxy_user` and `http_proxy_password`, or use network-layer access control.

@@ -1,0 +1,82 @@
+name: Gluetun VPN Gateway
+version: "0.1.0"
+slug: gluetun_vpn_gateway
+description: "Configurable Gluetun VPN gateway/proxy for selective routing from LAN clients."
+url: "https://github.com/WolframRavenwolf/home-assistant-addons"
+arch:
+  - amd64
+  - aarch64
+init: false
+startup: services
+boot: manual
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:vpn
+panel_title: Gluetun VPN Gateway
+privileged:
+  - NET_ADMIN
+  - NET_RAW
+devices:
+  - /dev/net/tun
+map:
+  - addon_config:rw
+ports:
+  8888/tcp: 8888
+  8388/tcp: null
+  8388/udp: null
+ports_description:
+  8888/tcp: "HTTP CONNECT proxy through the VPN tunnel"
+  8388/tcp: "Optional Shadowsocks TCP proxy through the VPN tunnel"
+  8388/udp: "Optional Shadowsocks UDP proxy through the VPN tunnel"
+options:
+  host_hint: "homeassistant.local"
+  vpn_service_provider: "nordvpn"
+  vpn_type: "wireguard"
+  server_countries: "United States"
+  server_regions: ""
+  server_cities: "San Francisco"
+  server_hostnames: ""
+  server_categories: ""
+  server_number: ""
+  openvpn_user: ""
+  openvpn_password: ""
+  openvpn_protocol: "udp"
+  wireguard_private_key: ""
+  http_proxy: true
+  http_proxy_user: ""
+  http_proxy_password: ""
+  http_proxy_stealth: true
+  shadowsocks: false
+  shadowsocks_password: ""
+  shadowsocks_cipher: "chacha20-ietf-poly1305"
+  firewall_outbound_subnets: "192.168.178.0/24"
+  extra_input_ports: ""
+  log_level: "info"
+  env_vars: []
+schema:
+  host_hint: "str"
+  vpn_service_provider: "str"
+  vpn_type: "list(openvpn|wireguard)"
+  server_countries: "str?"
+  server_regions: "str?"
+  server_cities: "str?"
+  server_hostnames: "str?"
+  server_categories: "str?"
+  server_number: "str?"
+  openvpn_user: "str?"
+  openvpn_password: "password?"
+  openvpn_protocol: "list(udp|tcp)"
+  wireguard_private_key: "password?"
+  http_proxy: "bool"
+  http_proxy_user: "str?"
+  http_proxy_password: "password?"
+  http_proxy_stealth: "bool"
+  shadowsocks: "bool"
+  shadowsocks_password: "password?"
+  shadowsocks_cipher: "list(chacha20-ietf-poly1305|aes-128-gcm|aes-256-gcm)"
+  firewall_outbound_subnets: "str?"
+  extra_input_ports: "match(^$|^[0-9]{1,5}(,[0-9]{1,5})*$)"
+  log_level: "list(trace|debug|info|warn|error)"
+  env_vars:
+    - name: "match(^[A-Z_][A-Z0-9_]{0,254}$)"
+      value: "str"
