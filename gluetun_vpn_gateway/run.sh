@@ -77,16 +77,46 @@ validate_wireguard_private_key_hint() {
     [ -n "$key" ] || return 0
     key_len=${#key}
     if [ "$VPN_SERVICE_PROVIDER" = "nordvpn" ] && [ "$VPN_TYPE" = "wireguard" ] && [ "$key_len" -eq 64 ]; then
-        fatal "wireguard_private_key looks like a NordVPN access token (${key_len} chars), not a WireGuard private key. Convert it locally with: curl -sS -u 'token:<token>' https://api.nordvpn.com/v1/users/services/credentials | jq -r '.nordlynx_private_key'"
+        fatal "wireguard_private_key looks like a NordVPN access token (${key_len} chars), not a WireGuard private key. Put the token in nordvpn_access_token, or see DOCS.md for a safe local conversion method."
     fi
     if [ "$key_len" -ne 44 ]; then
-        fatal "wireguard_private_key must be the provider WireGuard private key, usually 44 base64 characters ending with '='. Got ${key_len} characters. A NordVPN login/access token is not valid here."
+        fatal "wireguard_private_key must be the provider WireGuard private key, usually 44 base64 characters ending with '='. Got ${key_len} characters. A NordVPN login/access token is not valid in this field."
     fi
+}
+
+fetch_nordvpn_wireguard_private_key() {
+    token="$1"
+    [ -n "$token" ] || fatal "nordvpn_access_token must not be empty"
+    token_len=${#token}
+    [ "$token_len" -ge 20 ] || fatal "nordvpn_access_token is unexpectedly short"
+    command -v curl >/dev/null 2>&1 || fatal "curl is required to exchange nordvpn_access_token"
+    command -v jq >/dev/null 2>&1 || fatal "jq is required to parse the NordVPN credential response"
+    command -v base64 >/dev/null 2>&1 || fatal "base64 is required to prepare NordVPN API authentication"
+
+    auth_header_path="/run/secrets/nordvpn_auth_header.$$"
+    trap 'rm -f "$auth_header_path"' EXIT HUP INT TERM
+    if ! auth_value="$(printf 'token:%s' "$token" | base64 | tr -d '\n')"; then
+        fatal "failed to prepare NordVPN API authentication value"
+    fi
+    write_secret "$auth_header_path" "Authorization: Basic ${auth_value}"
+
+    echo "[gluetun-vpn-gateway] Fetching NordVPN WireGuard private key from nordvpn_access_token" >&2
+    if ! response="$(curl -fsS --connect-timeout 15 --max-time 30 --header "@$auth_header_path" https://api.nordvpn.com/v1/users/services/credentials 2>/dev/null)"; then
+        fatal "failed to fetch NordVPN WireGuard credentials from nordvpn_access_token. Check token validity, account access, DNS, and outbound HTTPS connectivity."
+    fi
+    rm -f "$auth_header_path"
+    trap - EXIT HUP INT TERM
+
+    if ! private_key="$(printf '%s' "$response" | jq -r '.nordlynx_private_key // empty' 2>/dev/null)"; then
+        fatal "NordVPN credential response could not be parsed"
+    fi
+    [ -n "$private_key" ] || fatal "NordVPN credential response did not include nordlynx_private_key"
+    printf '%s' "$private_key"
 }
 
 is_managed_env() {
     case "$1" in
-        VPN_SERVICE_PROVIDER|VPN_TYPE|OPENVPN_USER|OPENVPN_PASSWORD|OPENVPN_USER_SECRETFILE|OPENVPN_PASSWORD_SECRETFILE|OPENVPN_PROTOCOL|WIREGUARD_PRIVATE_KEY|WIREGUARD_PRIVATE_KEY_SECRETFILE|SERVER_COUNTRIES|SERVER_REGIONS|SERVER_CITIES|SERVER_HOSTNAMES|SERVER_CATEGORIES|SERVER_NUMBER|HTTPPROXY|HTTPPROXY_LISTENING_ADDRESS|HTTPPROXY_USER|HTTPPROXY_PASSWORD|HTTPPROXY_USER_SECRETFILE|HTTPPROXY_PASSWORD_SECRETFILE|HTTPPROXY_STEALTH|SHADOWSOCKS|SHADOWSOCKS_LISTENING_ADDRESS|SHADOWSOCKS_PASSWORD|SHADOWSOCKS_PASSWORD_SECRETFILE|SHADOWSOCKS_CIPHER|FIREWALL_INPUT_PORTS|FIREWALL_OUTBOUND_SUBNETS|FIREWALL_ENABLED_DISABLING_IT_SHOOTS_YOU_IN_YOUR_FOOT|HEALTH_SERVER_ADDRESS|HTTP_CONTROL_SERVER_ADDRESS|STORAGE_FILEPATH|PUBLICIP_FILE|LOG_LEVEL)
+        VPN_SERVICE_PROVIDER|VPN_TYPE|OPENVPN_USER|OPENVPN_PASSWORD|OPENVPN_USER_SECRETFILE|OPENVPN_PASSWORD_SECRETFILE|OPENVPN_PROTOCOL|WIREGUARD_PRIVATE_KEY|WIREGUARD_PRIVATE_KEY_SECRETFILE|NORDVPN_ACCESS_TOKEN|NORDVPN_ACCESS_TOKEN_SECRETFILE|SERVER_COUNTRIES|SERVER_REGIONS|SERVER_CITIES|SERVER_HOSTNAMES|SERVER_CATEGORIES|SERVER_NUMBER|HTTPPROXY|HTTPPROXY_LISTENING_ADDRESS|HTTPPROXY_USER|HTTPPROXY_PASSWORD|HTTPPROXY_USER_SECRETFILE|HTTPPROXY_PASSWORD_SECRETFILE|HTTPPROXY_STEALTH|SHADOWSOCKS|SHADOWSOCKS_LISTENING_ADDRESS|SHADOWSOCKS_PASSWORD|SHADOWSOCKS_PASSWORD_SECRETFILE|SHADOWSOCKS_CIPHER|FIREWALL_INPUT_PORTS|FIREWALL_OUTBOUND_SUBNETS|FIREWALL_ENABLED_DISABLING_IT_SHOOTS_YOU_IN_YOUR_FOOT|HEALTH_SERVER_ADDRESS|HTTP_CONTROL_SERVER_ADDRESS|STORAGE_FILEPATH|PUBLICIP_FILE|LOG_LEVEL)
             return 0
             ;;
     esac
@@ -152,6 +182,7 @@ OPENVPN_USER_VALUE="$(opt openvpn_user)"
 OPENVPN_PASSWORD_VALUE="$(opt openvpn_password)"
 OPENVPN_PROTOCOL_VALUE="$(opt openvpn_protocol)"
 WIREGUARD_PRIVATE_KEY_VALUE="$(opt wireguard_private_key)"
+NORDVPN_ACCESS_TOKEN_VALUE="$(opt nordvpn_access_token)"
 HTTP_PROXY_USER_VALUE="$(opt http_proxy_user)"
 HTTP_PROXY_PASSWORD_VALUE="$(opt http_proxy_password)"
 SHADOWSOCKS_PASSWORD_VALUE="$(opt shadowsocks_password)"
@@ -170,12 +201,18 @@ esac
 
 if [ "$VPN_SERVICE_PROVIDER" = "nordvpn" ]; then
     if [ "$VPN_TYPE" = "openvpn" ]; then
+        [ -z "$NORDVPN_ACCESS_TOKEN_VALUE" ] || fatal "nordvpn_access_token can only be used with NordVPN WireGuard. For OpenVPN, use openvpn_user and openvpn_password service credentials."
         [ -n "$OPENVPN_USER_VALUE" ] || fatal "openvpn_user is required for NordVPN OpenVPN. Use NordVPN service credentials, not your account email."
         [ -n "$OPENVPN_PASSWORD_VALUE" ] || fatal "openvpn_password is required for NordVPN OpenVPN. Use NordVPN service credentials, not your account password."
     else
-        [ -n "$WIREGUARD_PRIVATE_KEY_VALUE" ] || fatal "wireguard_private_key is required for NordVPN WireGuard."
+        if [ -z "$WIREGUARD_PRIVATE_KEY_VALUE" ]; then
+            [ -n "$NORDVPN_ACCESS_TOKEN_VALUE" ] || fatal "wireguard_private_key or nordvpn_access_token is required for NordVPN WireGuard."
+            WIREGUARD_PRIVATE_KEY_VALUE="$(fetch_nordvpn_wireguard_private_key "$NORDVPN_ACCESS_TOKEN_VALUE")"
+        fi
         validate_wireguard_private_key_hint "$WIREGUARD_PRIVATE_KEY_VALUE"
     fi
+elif [ -n "$NORDVPN_ACCESS_TOKEN_VALUE" ]; then
+    fatal "nordvpn_access_token can only be used when vpn_service_provider is nordvpn"
 fi
 
 if opt_bool http_proxy; then

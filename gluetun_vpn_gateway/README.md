@@ -10,7 +10,7 @@ The default profile is ready for a NordVPN San Francisco egress setup:
 - City filter: `San Francisco`
 - HTTP CONNECT proxy: `8888/tcp`
 
-With the default profile, enter only your NordVPN WireGuard private key in `wireguard_private_key`, then start the add-on. A NordVPN login/access token is not the same thing as this WireGuard private key; convert the token first if you generated one from Nord Account.
+With the default profile, enter either `nordvpn_access_token` or `wireguard_private_key`, then start the add-on. If you provide the NordVPN token, the add-on exchanges it for `nordlynx_private_key` at startup and passes only that WireGuard private key to Gluetun.
 
 See [`DOCS.md`](DOCS.md) for installation, configuration, proxy-auth options, and verification steps.
 

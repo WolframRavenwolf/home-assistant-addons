@@ -41,7 +41,10 @@ configuration:
     description: UDP is usually fastest; TCP can help on restrictive networks.
   wireguard_private_key:
     name: WireGuard Private Key
-    description: WireGuard private key for providers that require it. For the default NordVPN WireGuard profile, enter the NordVPN nordlynx_private_key here, not a NordVPN login/access token.
+    description: Optional provider WireGuard private key. For the default NordVPN profile, this is the nordlynx_private_key and takes priority over nordvpn_access_token.
+  nordvpn_access_token:
+    name: NordVPN Access Token
+    description: Optional NordVPN login/access token. Used only with NordVPN WireGuard when wireguard_private_key is empty; the add-on exchanges it for nordlynx_private_key at startup and never logs the token.
   http_proxy:
     name: HTTP CONNECT Proxy
     description: Enable Gluetun's built-in HTTP CONNECT proxy on port 8888.

@@ -1,5 +1,5 @@
 name: Gluetun VPN Gateway
-version: "0.1.1"
+version: "0.1.2"
 slug: gluetun_vpn_gateway
 description: "Configurable Gluetun VPN gateway/proxy for selective routing from LAN clients."
 url: "https://github.com/WolframRavenwolf/home-assistant-addons"
@@ -42,6 +42,7 @@ options:
   openvpn_password: ""
   openvpn_protocol: "udp"
   wireguard_private_key: ""
+  nordvpn_access_token: ""
   http_proxy: true
   http_proxy_user: ""
   http_proxy_password: ""
@@ -67,6 +68,7 @@ schema:
   openvpn_password: "password?"
   openvpn_protocol: "list(udp|tcp)"
   wireguard_private_key: "password?"
+  nordvpn_access_token: "password?"
   http_proxy: "bool"
   http_proxy_user: "str?"
   http_proxy_password: "password?"

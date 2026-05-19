@@ -1,7 +1,7 @@
 ARG BUILD_FROM
 FROM ${BUILD_FROM}
 
-RUN apk add --no-cache jq ca-certificates tzdata \
+RUN apk add --no-cache jq curl ca-certificates tzdata \
     && mkdir -p /var/www /config/gluetun /run/secrets
 
 COPY run.sh /run.sh

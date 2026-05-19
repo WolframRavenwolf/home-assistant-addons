@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2
+
+- Add optional `nordvpn_access_token` support for NordVPN WireGuard.
+- Exchange the token for `nordlynx_private_key` at startup when `wireguard_private_key` is empty.
+- Keep `wireguard_private_key` as the higher-priority static credential path.
+
 ## 0.1.1
 
 - Clarify that NordVPN login/access tokens are not WireGuard private keys.
