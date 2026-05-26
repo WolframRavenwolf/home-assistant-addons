@@ -20,7 +20,7 @@ The bundled defaults provide a ready-to-use example profile — NordVPN WireGuar
 
 ## Installation
 
-1. Add this repository to Home Assistant: **Settings → Add-ons → Add-on Store → Repositories**.
+1. Add this repository to Home Assistant: **Settings > Apps > Install app > Repositories**.
 2. Paste the repository URL:
    ```text
    https://github.com/WolframRavenwolf/home-assistant-addons

@@ -1,0 +1,16 @@
+configuration:
+  site_url:
+    name: Site URL
+    description: >-
+      Public LAN URL Mattermost uses for links, redirects, clients, and API callbacks.
+      Keep this reachable from your browser and trusted bots or agents.
+  access_password:
+    name: Access Password
+    description: >-
+      Optional nginx Basic Auth password for direct HTTP/HTTPS ports.
+      Username: mattermost. Leave empty to rely on Mattermost accounts and tokens only.
+  env_vars:
+    name: Mattermost Environment Variables
+    description: >-
+      Extra Mattermost MM_* environment variables applied on every start.
+      Core database, storage, listen address, and Site URL variables are managed by the add-on.
