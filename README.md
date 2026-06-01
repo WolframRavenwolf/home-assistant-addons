@@ -2,6 +2,8 @@
 
 A shared Home Assistant apps repository maintained by Wolfram Ravenwolf.
 
+These apps are maintained primarily for personal use, but are published for anyone who finds them useful.
+
 Home Assistant labels this area as **Apps** and the repository browser as the **App Store**. This repository follows that UI wording for the collection while individual packages may still use Home Assistant's add-on terminology where it is technically accurate.
 
 In Home Assistant, open **Settings > Apps > Install app > Repositories** and add this repository once:

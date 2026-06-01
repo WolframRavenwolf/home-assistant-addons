@@ -1,5 +1,5 @@
 name: Mattermost
-version: "0.1.5"
+version: "1.0.0"
 slug: mattermost
 description: "Mattermost Team Edition for Home Assistant with bot support"
 url: "https://github.com/WolframRavenwolf/home-assistant-addons"
