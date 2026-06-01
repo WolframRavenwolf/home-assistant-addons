@@ -2,4 +2,4 @@ build_from:
   amd64: ghcr.io/home-assistant/amd64-base-debian:bookworm
   aarch64: ghcr.io/home-assistant/aarch64-base-debian:bookworm
 args:
-  MATTERMOST_VERSION: "11.6.1"
+  MATTERMOST_VERSION: "11.7.2"

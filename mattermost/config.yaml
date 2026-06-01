@@ -1,5 +1,5 @@
 name: Mattermost
-version: "0.1.3"
+version: "0.1.4"
 slug: mattermost
 description: "Mattermost Team Edition for Home Assistant with LAN access for users and bots."
 url: "https://github.com/WolframRavenwolf/home-assistant-addons"
@@ -27,10 +27,10 @@ options:
   site_url: "http://homeassistant.local:8065"
   access_password: ""
   env_vars:
-    - name: "MM_TEAMSETTINGS_SITENAME"
-      value: "Ravenwolf Mattermost"
     - name: "MM_EMAILSETTINGS_ENABLEPREVIEWMODEBANNER"
       value: "false"
+    - name: "MM_SERVICESETTINGS_ALLOWCORSFROM"
+      value: ""
 schema:
   site_url: "url?"
   access_password: "password?"

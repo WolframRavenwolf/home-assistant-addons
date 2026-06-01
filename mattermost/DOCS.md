@@ -6,7 +6,7 @@ This add-on installs Mattermost and PostgreSQL in one Home Assistant add-on cont
 
 ## Features
 
-- Mattermost Team Edition 11.6.1
+- Mattermost Team Edition 11.7.2 ESR
 - Built-in PostgreSQL with persistent storage under `/config/postgres`
 - Persistent Mattermost config, files, plugins, logs, and TLS certs under `/config/mattermost`
 - Home Assistant sidebar landing page with health status
@@ -14,6 +14,7 @@ This add-on installs Mattermost and PostgreSQL in one Home Assistant add-on cont
 - Direct LAN HTTPS on port `8465` with an add-on generated CA certificate
 - Bot-friendly defaults: bot account creation, personal access tokens, slash commands, incoming webhooks, and outgoing webhooks are enabled
 - Optional nginx Basic Auth for direct ports
+- Optional CORS allowlist through `MM_SERVICESETTINGS_ALLOWCORSFROM` for browser-based integrations that call the Mattermost API from another origin
 
 ## Installation
 
@@ -33,7 +34,9 @@ This add-on installs Mattermost and PostgreSQL in one Home Assistant add-on cont
 | --- | --- | --- |
 | `site_url` | `http://homeassistant.local:8065` | Public LAN URL Mattermost uses for links, redirects, clients, and API callbacks. Set this to the hostname or IP that your browser and bots/agents can reach. |
 | `access_password` | empty | Optional nginx Basic Auth password for direct HTTP/HTTPS ports. Username: `mattermost`. Leave empty to rely on Mattermost accounts and tokens only. |
-| `env_vars` | `MM_TEAMSETTINGS_SITENAME=Ravenwolf Mattermost`, `MM_EMAILSETTINGS_ENABLEPREVIEWMODEBANNER=false` | Extra Mattermost environment variables applied on every start. Core database, storage, listen address, and Site URL variables are managed by the add-on. |
+| `env_vars` | `MM_EMAILSETTINGS_ENABLEPREVIEWMODEBANNER=false`, `MM_SERVICESETTINGS_ALLOWCORSFROM=` | Extra Mattermost `MM_*` environment variables applied on every start. Empty values are not exported. Core database, storage, listen address, and Site URL variables are managed by the add-on. |
+
+`MM_SERVICESETTINGS_ALLOWCORSFROM` is included as an empty placeholder for browser-based integrations that need cross-origin API calls. Leave it empty unless a browser console shows CORS failures, or set it to the allowed origins separated by spaces, for example `http://homeassistant.local:8123 http://homeassistant.local:8065`.
 
 ## Access
 

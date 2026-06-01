@@ -13,4 +13,5 @@ configuration:
     name: Mattermost Environment Variables
     description: >-
       Extra Mattermost MM_* environment variables applied on every start.
-      Core database, storage, listen address, and Site URL variables are managed by the add-on.
+      Empty values are not exported. Core database, storage, listen address,
+      and Site URL variables are managed by the add-on.

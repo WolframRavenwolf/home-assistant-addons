@@ -8,7 +8,7 @@ See [DOCS.md](DOCS.md) for installation, configuration, storage, and security de
 
 ## Highlights
 
-- Mattermost Team Edition 11.6.1.
+- Mattermost Team Edition 11.7.2 ESR.
 - Built-in PostgreSQL with persistent storage under `/config/postgres`.
 - Persistent Mattermost config, files, plugins, logs, and TLS certs under `/config/mattermost`.
 - Home Assistant sidebar landing page with health status.
@@ -16,6 +16,7 @@ See [DOCS.md](DOCS.md) for installation, configuration, storage, and security de
 - Direct LAN HTTPS on port `8465` with an add-on generated CA certificate.
 - Bot-friendly defaults: bot account creation, personal access tokens, slash commands, incoming webhooks, and outgoing webhooks are enabled.
 - Optional nginx Basic Auth for direct ports.
+- Optional CORS allowlist through `MM_SERVICESETTINGS_ALLOWCORSFROM` for browser-based integrations that call the Mattermost API from another origin.
 
 ## Access
 
