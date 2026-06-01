@@ -14,4 +14,4 @@ configuration:
     description: >-
       Extra Mattermost MM_* environment variables applied on every start.
       Empty values are not exported. Core database, storage, listen address,
-      and Site URL variables are managed by the add-on.
+      Site URL, and the email preview-mode banner are managed by the add-on.

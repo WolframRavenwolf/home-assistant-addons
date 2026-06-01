@@ -34,7 +34,7 @@ This add-on installs Mattermost and PostgreSQL in one Home Assistant add-on cont
 | --- | --- | --- |
 | `site_url` | `http://homeassistant.local:8065` | Public LAN URL Mattermost uses for links, redirects, clients, and API callbacks. Set this to the hostname or IP that your browser and bots/agents can reach. |
 | `access_password` | empty | Optional nginx Basic Auth password for direct HTTP/HTTPS ports. Username: `mattermost`. Leave empty to rely on Mattermost accounts and tokens only. |
-| `env_vars` | `MM_EMAILSETTINGS_ENABLEPREVIEWMODEBANNER=false`, `MM_SERVICESETTINGS_ALLOWCORSFROM=` | Extra Mattermost `MM_*` environment variables applied on every start. Empty values are not exported. Core database, storage, listen address, and Site URL variables are managed by the add-on. |
+| `env_vars` | `MM_SERVICESETTINGS_ALLOWCORSFROM=` | Extra Mattermost `MM_*` environment variables applied on every start. Empty values are not exported. Core database, storage, listen address, Site URL, and the email preview-mode banner are managed by the add-on. |
 
 `MM_SERVICESETTINGS_ALLOWCORSFROM` is included as an empty placeholder for browser-based integrations that need cross-origin API calls. Leave it empty unless a browser console shows CORS failures, or set it to the allowed origins separated by spaces, for example `http://homeassistant.local:8123 http://homeassistant.local:8065`.
 
