@@ -5,6 +5,7 @@
 - Replace Gluetun `v3.41.1` with the upstream build from 2026-10-19 at revision `156ccc2659f0a429d29d1f11bdf07229c5c3eba0`.
 - Pin separate amd64 and aarch64 base-image manifests in architecture-specific Dockerfiles.
 - Include upstream WireGuard, firewall, routing, DNS, and health-check fixes merged after `v3.41.1`, including the fix for connections dropped during firewall setup.
+- Keep Gluetun's server storage enabled under persistent add-on config, retain `servers.json` as the legacy migration source, reject alternate storage-variable sources, and retry migration after an interrupted empty-manifest write.
 
 ## 0.1.3
 

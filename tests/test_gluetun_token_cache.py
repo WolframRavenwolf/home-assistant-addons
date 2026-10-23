@@ -44,9 +44,14 @@ printf '%s' '{{"nordlynx_private_key":"{FAKE_WIREGUARD_KEY}"}}'
     path.chmod(0o755)
 
 
-def transformed_run_script(sandbox: Path) -> Path:
+def transformed_run_script(
+    sandbox: Path,
+    *,
+    final_command: str = "echo '[test] gluetun-entrypoint skipped'; exit 0",
+) -> Path:
     data_dir = sandbox / "data"
     config_dir = sandbox / "config" / "gluetun"
+    upstream_legacy_file = sandbox / "gluetun" / "servers.json"
     secrets_dir = sandbox / "run" / "secrets"
     www_dir = sandbox / "www"
 
@@ -56,10 +61,11 @@ def transformed_run_script(sandbox: Path) -> Path:
         'OPTIONS_FILE="/data/options.json"': f'OPTIONS_FILE="{data_dir}/options.json"',
         'CONFIG_DIR="/config/gluetun"': f'CONFIG_DIR="{config_dir}"',
         "/data/nordvpn": f"{data_dir}/nordvpn",
+        "/gluetun/servers.json": str(upstream_legacy_file),
         "/run/secrets": str(secrets_dir),
         "/var/www": str(www_dir),
         "start_landing_server\n": ": # start_landing_server skipped by token-cache smoke test\n",
-        final_entrypoint: "echo '[test] gluetun-entrypoint skipped'; exit 0",
+        final_entrypoint: final_command,
     }
     for old, new in replacements.items():
         text = text.replace(old, new)
@@ -76,6 +82,7 @@ def write_options(
     auth_value: str = "",
     cache_enabled: bool = True,
     wireguard_key: str = "",
+    env_vars=None,
 ) -> None:
     data_dir.mkdir(parents=True, exist_ok=True)
     options = {
@@ -90,13 +97,29 @@ def write_options(
         "http_proxy_stealth": False,
         "shadowsocks": False,
         "firewall_outbound_subnets": "192.168.178.0/24",
-        "env_vars": [],
+        "env_vars": [] if env_vars is None else env_vars,
     }
     (data_dir / "options.json").write_text(json.dumps(options))
 
 
-def run_script(script: Path, bin_dir: Path) -> subprocess.CompletedProcess[str]:
+def run_script(
+    script: Path,
+    bin_dir: Path,
+    *,
+    extra_env=None,
+) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
+    for name in (
+        "STORAGE_FILEPATH",
+        "STORAGE_FILEPATH_FILE",
+        "STORAGE_FILEPATH_SECRETFILE",
+        "STORAGE_SERVERS_DIRECTORY_PATH",
+        "STORAGE_SERVERS_DIRECTORY_PATH_FILE",
+        "STORAGE_SERVERS_DIRECTORY_PATH_SECRETFILE",
+    ):
+        env.pop(name, None)
+    if extra_env is not None:
+        env.update(extra_env)
     env["PATH"] = f"{bin_dir}:{env['PATH']}"
     return subprocess.run(
         ["/bin/sh", str(script)],
@@ -113,12 +136,14 @@ def run_script(script: Path, bin_dir: Path) -> subprocess.CompletedProcess[str]:
 def isolated_sandbox():
     tmp_root = ROOT / ".test-tmp"
     tmp_root.mkdir(exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="gluetun-cache-test-", dir=str(tmp_root)) as tmp:
-        yield Path(tmp)
     try:
-        tmp_root.rmdir()
-    except OSError:
-        pass
+        with tempfile.TemporaryDirectory(prefix="gluetun-cache-test-", dir=str(tmp_root)) as tmp:
+            yield Path(tmp)
+    finally:
+        try:
+            tmp_root.rmdir()
+        except OSError:
+            pass
 
 
 def assert_jq_available() -> None:
@@ -226,9 +251,206 @@ def test_direct_wireguard_key_takes_priority_over_token_and_cache() -> None:
         assert not curl_log.exists()
 
 
+def test_storage_directory_stays_persistent_and_rejects_override() -> None:
+    assert_jq_available()
+
+    with isolated_sandbox() as sandbox:
+        bin_dir = sandbox / "bin"
+        bin_dir.mkdir(parents=True)
+        data_dir = sandbox / "data"
+        entrypoint_env = sandbox / "entrypoint.env"
+        config_dir = sandbox / "config" / "gluetun"
+        config_dir.mkdir(parents=True)
+        legacy_storage_file = config_dir / "servers.json"
+        legacy_storage_file.write_text('{"fixture":"legacy-server-data"}\n')
+        upstream_legacy_file = sandbox / "gluetun" / "servers.json"
+        upstream_legacy_file.parent.mkdir(parents=True)
+        script = transformed_run_script(
+            sandbox,
+            final_command=f'env > "{entrypoint_env}"; exit 0',
+        )
+
+        write_options(
+            data_dir,
+            wireguard_key=DIRECT_WIREGUARD_KEY,
+            env_vars=[
+                {
+                    "name": "STORAGE_SERVERS_DIRECTORY_PATH",
+                    "value": "/tmp/not-persistent",
+                },
+                {
+                    "name": "STORAGE_FILEPATH",
+                    "value": "/tmp/legacy-not-persistent.json",
+                }
+            ],
+        )
+        result = run_script(
+            script,
+            bin_dir,
+            extra_env={"STORAGE_FILEPATH": "/tmp/inherited-legacy.json"},
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert (
+            "Warning: skipping managed environment variable "
+            "STORAGE_SERVERS_DIRECTORY_PATH"
+        ) in result.stdout
+        assert (
+            "Warning: skipping managed environment variable STORAGE_FILEPATH"
+        ) in result.stdout
+
+        environment = dict(
+            line.split("=", 1)
+            for line in entrypoint_env.read_text().splitlines()
+            if "=" in line
+        )
+        assert "STORAGE_FILEPATH" not in environment
+        assert environment["STORAGE_SERVERS_DIRECTORY_PATH"] == str(
+            config_dir / "servers"
+        )
+        assert upstream_legacy_file.read_bytes() == legacy_storage_file.read_bytes()
+        assert stat.S_IMODE(upstream_legacy_file.stat().st_mode) == 0o600
+
+        upstream_legacy_file.unlink()
+        persistent_manifest = config_dir / "servers" / "manifest.json"
+        persistent_manifest.parent.mkdir(parents=True)
+        persistent_manifest.write_text('{"version":1}\n')
+        recreated = run_script(script, bin_dir)
+        assert recreated.returncode == 0, recreated.stdout + recreated.stderr
+        assert not upstream_legacy_file.exists()
+
+
+def test_storage_source_variants_are_rejected_and_unset() -> None:
+    assert_jq_available()
+
+    with isolated_sandbox() as sandbox:
+        bin_dir = sandbox / "bin"
+        bin_dir.mkdir(parents=True)
+        data_dir = sandbox / "data"
+        entrypoint_env = sandbox / "entrypoint.env"
+        config_dir = sandbox / "config" / "gluetun"
+        config_dir.mkdir(parents=True)
+        script = transformed_run_script(
+            sandbox,
+            final_command=f'env > "{entrypoint_env}"; exit 0',
+        )
+        managed_variants = (
+            "STORAGE_FILEPATH_FILE",
+            "STORAGE_FILEPATH_SECRETFILE",
+            "STORAGE_SERVERS_DIRECTORY_PATH_FILE",
+            "STORAGE_SERVERS_DIRECTORY_PATH_SECRETFILE",
+        )
+
+        write_options(
+            data_dir,
+            wireguard_key=DIRECT_WIREGUARD_KEY,
+            env_vars=[
+                {"name": name, "value": f"/tmp/option-{name.lower()}"}
+                for name in managed_variants
+            ],
+        )
+        result = run_script(
+            script,
+            bin_dir,
+            extra_env={name: f"/tmp/inherited-{name.lower()}" for name in managed_variants},
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+
+        environment = dict(
+            line.split("=", 1)
+            for line in entrypoint_env.read_text().splitlines()
+            if "=" in line
+        )
+        for name in managed_variants:
+            assert f"Warning: skipping managed environment variable {name}" in result.stdout
+            assert name not in environment
+
+
+def test_storage_remains_enabled_and_rejects_alternate_sources() -> None:
+    assert_jq_available()
+
+    with isolated_sandbox() as sandbox:
+        bin_dir = sandbox / "bin"
+        bin_dir.mkdir(parents=True)
+        data_dir = sandbox / "data"
+        entrypoint_env = sandbox / "entrypoint.env"
+        config_dir = sandbox / "config" / "gluetun"
+        config_dir.mkdir(parents=True)
+        script = transformed_run_script(
+            sandbox,
+            final_command=f'env > "{entrypoint_env}"; exit 0',
+        )
+        storage_enabled_sources = (
+            "STORAGE_SERVERS_ENABLED_FILE",
+            "STORAGE_SERVERS_ENABLED_SECRETFILE",
+        )
+
+        write_options(
+            data_dir,
+            wireguard_key=DIRECT_WIREGUARD_KEY,
+            env_vars=[
+                {"name": "STORAGE_SERVERS_ENABLED", "value": "off"},
+                *(
+                    {"name": name, "value": f"/tmp/option-{name.lower()}"}
+                    for name in storage_enabled_sources
+                ),
+            ],
+        )
+        result = run_script(
+            script,
+            bin_dir,
+            extra_env={
+                "STORAGE_SERVERS_ENABLED": "off",
+                **{
+                    name: f"/tmp/inherited-{name.lower()}"
+                    for name in storage_enabled_sources
+                },
+            },
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+
+        environment = dict(
+            line.split("=", 1)
+            for line in entrypoint_env.read_text().splitlines()
+            if "=" in line
+        )
+        for name in ("STORAGE_SERVERS_ENABLED", *storage_enabled_sources):
+            assert f"Warning: skipping managed environment variable {name}" in result.stdout
+        assert environment["STORAGE_SERVERS_ENABLED"] == "on"
+        for name in storage_enabled_sources:
+            assert name not in environment
+
+
+def test_zero_byte_manifest_retries_legacy_storage_handoff() -> None:
+    assert_jq_available()
+
+    with isolated_sandbox() as sandbox:
+        bin_dir = sandbox / "bin"
+        bin_dir.mkdir(parents=True)
+        data_dir = sandbox / "data"
+        config_dir = sandbox / "config" / "gluetun"
+        storage_dir = config_dir / "servers"
+        storage_dir.mkdir(parents=True)
+        (storage_dir / "manifest.json").write_bytes(b"")
+        legacy_storage_file = config_dir / "servers.json"
+        legacy_storage_file.write_text('{"fixture":"legacy-server-data"}\n')
+        upstream_legacy_file = sandbox / "gluetun" / "servers.json"
+        upstream_legacy_file.parent.mkdir(parents=True)
+        script = transformed_run_script(sandbox)
+
+        write_options(data_dir, wireguard_key=DIRECT_WIREGUARD_KEY)
+        result = run_script(script, bin_dir)
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert upstream_legacy_file.read_bytes() == legacy_storage_file.read_bytes()
+        assert stat.S_IMODE(upstream_legacy_file.stat().st_mode) == 0o600
+
+
 if __name__ == "__main__":
     test_token_fetch_caches_key_and_cache_survives_token_removal()
     test_cache_disabled_fetches_but_does_not_persist_key()
     test_cache_disabled_does_not_reuse_existing_cached_key()
     test_direct_wireguard_key_takes_priority_over_token_and_cache()
+    test_storage_directory_stays_persistent_and_rejects_override()
+    test_storage_source_variants_are_rejected_and_unset()
+    test_storage_remains_enabled_and_rejects_alternate_sources()
+    test_zero_byte_manifest_retries_legacy_storage_handoff()
     print("TOKEN_CACHE_SMOKE_OK")
