@@ -1,3 +1,0 @@
-build_from:
-  amd64: qmcgaw/gluetun:v3.41.1
-  aarch64: qmcgaw/gluetun:v3.41.1

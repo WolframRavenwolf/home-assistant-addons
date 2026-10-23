@@ -8,7 +8,7 @@ The bundled defaults provide a ready-to-use example profile — NordVPN WireGuar
 
 ## Features
 
-- Gluetun `v3.41.1` base image, pinned for reproducible builds.
+- Gluetun upstream build from 2026-10-19 at revision `156ccc2659f0a429d29d1f11bdf07229c5c3eba0`, with its base image pinned per architecture by image-manifest digest.
 - Generic Gluetun provider configuration; defaults to NordVPN WireGuard + `server_countries: United States` + `server_cities: San Francisco` as an example profile.
 - WireGuard mode by default, using either a provider private key or, for NordVPN, an access token that is exchanged for `nordlynx_private_key` at startup and cached by default for future starts.
 - OpenVPN mode remains available for providers or setups requiring service credentials.

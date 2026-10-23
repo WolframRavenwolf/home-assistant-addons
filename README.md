@@ -29,8 +29,8 @@ LICENSE
   README.md
   DOCS.md
   config.yaml
-  build.yaml
-  Dockerfile
+  Dockerfile or Dockerfile.<arch>
+  build.yaml (optional legacy build metadata)
   translations/
 ```
 

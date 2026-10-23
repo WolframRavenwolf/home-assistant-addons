@@ -1,5 +1,4 @@
-ARG BUILD_FROM
-FROM ${BUILD_FROM}
+FROM qmcgaw/gluetun@sha256:5fc3a160f8ae25b229d974674b01b97bed3fe5a01a8e282911cfd1fffa8d383c
 
 RUN apk add --no-cache jq curl ca-certificates tzdata \
     && mkdir -p /var/www /config/gluetun /run/secrets
